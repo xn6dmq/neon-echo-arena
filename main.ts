@@ -16,6 +16,7 @@ import { cpSync, existsSync, mkdirSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { buildDossier } from './vendor/makefun-game.ts';
+import { readdirSync, statSync } from 'node:fs';
 
 const here = fileURLToPath(new URL('.', import.meta.url));
 const out = process.env.MAKEFUN_OUTPUT_DIR ?? '/output';
@@ -29,6 +30,16 @@ if (existsSync(join(here, 'screenshots'))) cpSync(join(here, 'screenshots'), joi
 // scorer would refuse (more than 4 screenshots or one over 256 KiB; more than 993 files in game/ or 48 MiB of game
 // files, in all, or a path under game/ over 1000 bytes: game/ counts beside /output's own 1000-entry cap, its
 // screenshots/ and dossier.json).
+
+// NEON ECHO ARENA hand-in check, written for this entry: refuse to hand in a
+// dossier whose cover screenshots or game entry are missing, and say plainly
+// what is being handed in so a failed run is obvious from its log alone.
+const shotNames = readdirSync(join(out, 'screenshots')).filter((n) => /\.(jpe?g|png)$/i.test(n)).sort();
+if (shotNames.length === 0) throw new Error('no screenshots copied to output: the entry would have no cover');
+if (!existsSync(join(out, 'game', 'index.html'))) throw new Error('game/index.html missing from output');
+const gameEntryBytes = statSync(join(out, 'game', 'index.html')).size;
+console.log(`NEON ECHO ARENA: handing in ${shotNames.length} screenshots (${shotNames.join(', ')}), game entry ${gameEntryBytes} bytes`);
+
 writeFileSync(
   join(out, 'dossier.json'),
   buildDossier(out, {
